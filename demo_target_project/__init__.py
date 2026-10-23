@@ -1,0 +1,1 @@
+"""Demo target project package."""

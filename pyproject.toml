@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-ai-framework"
+version = "1.0.0"
+description = "Advanced Agentic AI Framework for Autonomous Software Engineering"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    "openai>=1.30.0",
+    "httpx>=0.27.0",
+    "rich>=13.7.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "python-dotenv>=1.0.0",
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+agentic-ai = "agentic_framework.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentic_framework*"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = ["demo_target_project"]
+

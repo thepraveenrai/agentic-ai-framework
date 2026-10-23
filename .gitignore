@@ -1,0 +1,60 @@
+# ==============================================================================
+# Git Ignore - Agentic AI Framework
+# ==============================================================================
+
+# Critical: Environment & Secret Files (DO NOT COMMIT)
+.env
+.env.*
+!.env.example
+*.env
+*.secrets
+secrets.json
+credentials.json
+service-account*.json
+gcp-credentials*.json
+client_secret*.json
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.token
+*.auth
+id_rsa*
+id_ed25519*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Framework caches, traces, logs & databases
+.agentic_cache/
+.agentic_traces/
+.pytest_cache/
+*.log
+logs/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE & Editor local settings
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
