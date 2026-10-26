@@ -167,24 +167,40 @@ class WorkflowManager:
     def _web_hitl_callback(
         self,
         action_name: str,
-        details: str,
-        risk: ActionRiskLevel,
-        metadata: Dict[str, Any],
+        details: str = "",
+        risk: Any = ActionRiskLevel.MEDIUM,
+        metadata: Optional[Dict[str, Any]] = None,
+        *args,
+        **kwargs,
     ) -> HITLDecision:
         """Intercepts sensitive actions, broadcasts HITL request to web UI, and blocks for human response."""
         req_id = f"hitl-{int(time.time() * 1000)}"
         event_wait = threading.Event()
-        decision_holder: Dict[str, Any] = {"decision": HITLDecision.REJECT, "feedback": None}
+        decision_holder: Dict[str, Any] = {
+            "decision": HITLDecision(approved=False, user_feedback="Operation rejected by user."),
+            "feedback": None,
+        }
+
+        # Handle 2-arg signature where details might be metadata dict
+        if isinstance(details, dict) and metadata is None:
+            metadata = details
+            details = metadata.get("details", "")
+
+        metadata = metadata or {}
+        risk_val = risk.value if hasattr(risk, "value") else str(risk)
+        diff_text = metadata.get("diff", "")
+        cmd_text = metadata.get("command", "")
+        file_path_text = metadata.get("file_path", "")
 
         with self.lock:
             self.pending_hitl = {
                 "req_id": req_id,
                 "action_name": action_name,
                 "details": details,
-                "risk": risk.value,
-                "diff": metadata.get("diff", ""),
-                "command": metadata.get("command", ""),
-                "file_path": metadata.get("file_path", ""),
+                "risk": risk_val,
+                "diff": diff_text,
+                "command": cmd_text,
+                "file_path": file_path_text,
                 "wait_event": event_wait,
                 "decision_holder": decision_holder,
             }
@@ -195,10 +211,10 @@ class WorkflowManager:
             "req_id": req_id,
             "action_name": action_name,
             "details": details,
-            "risk": risk.value,
-            "diff": metadata.get("diff", ""),
-            "command": metadata.get("command", ""),
-            "file_path": metadata.get("file_path", ""),
+            "risk": risk_val,
+            "diff": diff_text,
+            "command": cmd_text,
+            "file_path": file_path_text,
         })
 
         # Wait up to 5 minutes for user interaction in the web UI
@@ -209,7 +225,7 @@ class WorkflowManager:
 
         if not signaled:
             logger.warning("Web HITL approval timed out after 300 seconds. Rejecting action.")
-            return HITLDecision.REJECT
+            return HITLDecision(approved=False, user_feedback="Web HITL approval timed out after 300s.")
 
         return decision_holder["decision"]
 
@@ -220,7 +236,10 @@ class WorkflowManager:
                 return False
 
             pending = self.pending_hitl
-            decision = HITLDecision.APPROVE if approved else HITLDecision.REJECT
+            decision = HITLDecision(
+                approved=approved,
+                user_feedback=feedback or ("Action approved by user" if approved else "Action rejected by user in Web UI"),
+            )
             pending["decision_holder"]["decision"] = decision
             pending["decision_holder"]["feedback"] = feedback
             pending["wait_event"].set()
@@ -277,8 +296,9 @@ class WorkflowManager:
             else:
                 raise ValueError(f"Unknown workflow mode: {mode}")
 
+            overall_status = res.get("status", "completed")
             with self.lock:
-                job["status"] = "completed"
+                job["status"] = overall_status
                 job["end_time"] = time.time()
                 job["final_summary"] = res.get("summary", "")
                 job["trace_id"] = res.get("trace_id", "")
@@ -287,6 +307,7 @@ class WorkflowManager:
             self._broadcast_event({
                 "type": "workflow_completed",
                 "job_id": job["job_id"],
+                "status": overall_status,
                 "summary": job["final_summary"],
                 "trace_id": job.get("trace_id"),
                 "duration": round(job["end_time"] - job["start_time"], 2),

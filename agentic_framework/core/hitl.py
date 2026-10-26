@@ -24,15 +24,29 @@ class HITLDecision:
     user_feedback: Optional[str] = None
     modified_payload: Optional[Any] = None
 
+    @classmethod
+    def approve(cls, feedback: Optional[str] = None) -> "HITLDecision":
+        return cls(approved=True, user_feedback=feedback)
+
+    @classmethod
+    def reject(cls, feedback: Optional[str] = None) -> "HITLDecision":
+        return cls(approved=False, user_feedback=feedback or "Operation rejected by user.")
+
+
+# Constants for convenience and backward compatibility
+HITLDecision.APPROVE = HITLDecision(approved=True)  # type: ignore
+HITLDecision.REJECT = HITLDecision(approved=False, user_feedback="Operation rejected by user.")  # type: ignore
+
 
 class HITLManager:
     """Manages interactive human approvals and feedback checkpoints."""
 
     def __init__(self):
         self.mode = settings.HITL_MODE  # "always", "on_modify", "never"
-        self._custom_callback: Optional[Callable[[str, Dict[str, Any]], HITLDecision]] = None
+        self.enabled: bool = settings.HITL_ENABLED
+        self._custom_callback: Optional[Callable[..., HITLDecision]] = None
 
-    def set_callback(self, callback: Callable[[str, Dict[str, Any]], HITLDecision]) -> None:
+    def set_callback(self, callback: Optional[Callable[..., HITLDecision]]) -> None:
         """Register programmatic approval callback for web or API integrations."""
         self._custom_callback = callback
 
@@ -44,15 +58,24 @@ class HITLManager:
         payload: Optional[Dict[str, Any]] = None,
     ) -> HITLDecision:
         """Request human approval before performing an action."""
-        if not settings.HITL_ENABLED or self.mode == "never":
-            return HITLDecision(approved=True)
+        if not self.enabled or not settings.HITL_ENABLED or self.mode == "never":
+            return HITLDecision.APPROVE
 
         if self.mode == "on_modify" and risk_level == ActionRiskLevel.LOW:
-            return HITLDecision(approved=True)
+            return HITLDecision.APPROVE
 
         # If custom callback registered (e.g. from Web UI / Dashboard / API)
         if self._custom_callback is not None:
-            return self._custom_callback(action_name, payload or {})
+            try:
+                # Preferred: 4-argument signature (action_name, details, risk, metadata)
+                return self._custom_callback(action_name, details, risk_level, payload or {})
+            except TypeError:
+                try:
+                    # Fallback: 2-argument signature (action_name, payload)
+                    return self._custom_callback(action_name, payload or {})
+                except Exception as e:
+                    logger.error(f"Error in custom HITL callback: {e}")
+                    return HITLDecision(approved=False, user_feedback=f"Callback execution error: {e}")
 
         # Default: Terminal Interactive HITL Prompt
         logger.hitl_prompt(action_name, details)

@@ -134,9 +134,9 @@
               <div style="font-weight: 600; font-size: 0.9rem;">🛡️ Human-in-the-Loop (HITL) Web Approval</div>
               <div style="font-size: 0.78rem; color: var(--text-dim);">Pause and display unified diffs in the web UI for your review before writing files.</div>
             </div>
-            <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
-              <input type="checkbox" id="hitlToggle" checked style="opacity: 0; width: 0; height: 0;">
-              <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .3s; border-radius: 24px;" id="toggleSlider"></span>
+            <label class="switch-toggle">
+              <input type="checkbox" id="hitlToggle" checked>
+              <span class="slider-round"></span>
             </label>
           </div>
 
@@ -357,7 +357,7 @@
         <!-- Final Summary Outcome Card -->
         <div id="summaryCard" class="summary-card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
-            <h3 style="color:#34d399; font-size:1.1rem; font-weight:700;">✨ Workflow Execution Completed Successfully</h3>
+            <h3 id="summaryCardTitle" style="color:#34d399; font-size:1.1rem; font-weight:700;">✨ Workflow Execution Completed Successfully</h3>
             <span class="tag success" id="summaryTraceTag">trace</span>
           </div>
           <div id="summaryMarkdown" style="font-size:0.88rem; line-height:1.6; white-space:pre-wrap; font-family:'JetBrains Mono', monospace; background:rgba(0,0,0,0.3); padding:1rem; border-radius:10px;"></div>

@@ -171,23 +171,47 @@ class MultiAgentOrchestrator:
             # Update accumulated context for subsequent agents
             accumulated_context += f"\n--- Step {s.step_id} Output by {s.agent_name} ---\n{res.get('output', '')}\n"
 
-        # 5. Conclude Trace
-        final_summary = self._synthesize_final_report(state)
-        tracer.end_trace(status="success", final_output=final_summary)
+        # 5. Evaluate Overall Workflow Status
+        overall_status = "success"
+        has_errors = False
+        was_rejected = False
+
+        for k, out in state.agent_outputs.items():
+            st = str(out.get("status", "")).lower()
+            out_text = str(out.get("output", "")).lower()
+            if st in ("failed", "error") or "tool execution exception" in out_text:
+                has_errors = True
+            if "rejected by user" in out_text or "cancelled by user" in out_text or "action rejected" in out_text:
+                was_rejected = True
+
+        if was_rejected:
+            overall_status = "rejected"
+            title_text = "⚠️ Workflow Completed: Action Rejected by User (HITL)"
+            panel_border = "yellow"
+        elif has_errors:
+            overall_status = "failed"
+            title_text = "❌ Workflow Execution Finished with Errors"
+            panel_border = "red"
+        else:
+            overall_status = "success"
+            title_text = "✨ Multi-Agent Workflow Completed Successfully!"
+            panel_border = "green"
+
+        final_summary = self._synthesize_final_report(state, overall_status=overall_status)
+        tracer.end_trace(status=overall_status, final_output=final_summary)
 
         # Display Final Summary
         console.print(
             Panel(
-                f"[bold green]Multi-Agent Workflow Completed Successfully![/bold green]\n\n"
                 f"{final_summary}",
-                border_style="green",
-                title="✨ Framework Execution Summary",
+                border_style=panel_border,
+                title=title_text,
             )
         )
 
         return {
             "trace_id": trace_id,
-            "status": "success",
+            "status": overall_status,
             "summary": final_summary,
             "agent_outputs": state.agent_outputs,
         }
@@ -257,9 +281,19 @@ class MultiAgentOrchestrator:
                         return str(p)
         return None
 
-    def _synthesize_final_report(self, state: OrchestratorState) -> str:
+    def _synthesize_final_report(self, state: OrchestratorState, overall_status: str = "success") -> str:
         """Combine all agent findings into a polished summary."""
-        lines = [f"**Target Project:** `{state.target_project}`", f"**Task:** {state.task}\n"]
+        status_label = {
+            "success": "✅ COMPLETED SUCCESSFULLY",
+            "rejected": "⚠️ ACTION REJECTED / CANCELLED BY USER (HITL)",
+            "failed": "❌ EXECUTION ENCOUNTERED ERRORS",
+        }.get(overall_status, overall_status.upper())
+
+        lines = [
+            f"**Overall Status:** `{status_label}`",
+            f"**Target Project:** `{state.target_project}`",
+            f"**Task:** {state.task}\n",
+        ]
         lines.append("### Agent Execution Outcomes:")
 
         for k, out in state.agent_outputs.items():

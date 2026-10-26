@@ -310,21 +310,50 @@ function handleLiveEvent(ev) {
 
   } else if (type === 'workflow_completed') {
     stopTimer();
-    setPipelineNodeState('regression', 'completed', 'Passed ✓', 6);
-    setPipelineNodeState('output', 'completed', 'Verified ✨', null);
+    const status = ev.status || 'success';
 
-    document.getElementById('liveStatusBadge').className = 'tag success';
-    document.getElementById('liveStatusBadge').textContent = 'COMPLETED';
-    document.getElementById('headerPulse').className = 'pulse-dot';
-    document.getElementById('headerStatusText').textContent = 'Engine Ready';
+    if (status === 'success' || status === 'completed') {
+      setPipelineNodeState('regression', 'completed', 'Passed ✓', 6);
+      setPipelineNodeState('output', 'completed', 'Verified ✨', null);
 
-    updateHUD('✨', 'Workflow Manager', 'done', `Workflow finished in ${ev.duration}s! Solution verified.`);
-    addTimelineEvent('success', 'Workflow Complete', `Execution completed in ${ev.duration}s. All checks passed.`, '✨');
-    showSummary(ev);
+      document.getElementById('liveStatusBadge').className = 'tag success';
+      document.getElementById('liveStatusBadge').textContent = 'COMPLETED';
+      document.getElementById('headerPulse').className = 'pulse-dot';
+      document.getElementById('headerStatusText').textContent = 'Engine Ready';
+
+      updateHUD('✨', 'Workflow Manager', 'done', `Workflow finished in ${ev.duration}s! Solution verified.`);
+      addTimelineEvent('success', 'Workflow Complete', `Execution completed in ${ev.duration}s. All checks passed.`, '✨');
+      showSummary(ev, 'success');
+
+    } else if (status === 'rejected') {
+      setPipelineNodeState('output', 'failed', 'Rejected ⚠️', null);
+
+      document.getElementById('liveStatusBadge').className = 'tag hitl';
+      document.getElementById('liveStatusBadge').textContent = 'REJECTED';
+      document.getElementById('headerPulse').className = 'pulse-dot';
+      document.getElementById('headerStatusText').textContent = 'Engine Ready';
+
+      updateHUD('⚠️', 'Workflow Manager', 'approval', `Workflow stopped: Action rejected by user.`);
+      addTimelineEvent('hitl', 'Action Rejected', `File modification was cancelled during Human-in-the-Loop review.`, '⚠️');
+      showSummary(ev, 'rejected');
+
+    } else {
+      setPipelineNodeState('output', 'failed', 'Failed ✗', null);
+
+      document.getElementById('liveStatusBadge').className = 'tag failed';
+      document.getElementById('liveStatusBadge').textContent = 'FAILED';
+      document.getElementById('headerPulse').className = 'pulse-dot';
+      document.getElementById('headerStatusText').textContent = 'Engine Ready';
+
+      updateHUD('❌', 'Workflow Manager', 'failed', `Workflow execution finished with errors.`);
+      addTimelineEvent('hitl', 'Workflow Failed', `Execution encountered errors or could not apply changes.`, '❌');
+      showSummary(ev, 'failed');
+    }
 
   } else if (type === 'workflow_failed') {
     stopTimer();
     setPipelineNodeState('agent', 'failed', 'Error ✗', null);
+    setPipelineNodeState('output', 'failed', 'Failed ✗', null);
 
     document.getElementById('liveStatusBadge').className = 'tag failed';
     document.getElementById('liveStatusBadge').textContent = 'FAILED';
@@ -333,6 +362,7 @@ function handleLiveEvent(ev) {
 
     updateHUD('❌', 'Error', 'failed', `Workflow failed: ${ev.error}`);
     addTimelineEvent('hitl', 'Workflow Failed', ev.error, '❌');
+    showSummary({ trace_id: 'error', summary: `Workflow failed: ${ev.error}` }, 'failed');
   }
 
   // 2. Also stream to Terminal Console
@@ -452,10 +482,41 @@ async function resolveHitl(approved) {
 }
 
 // Final Summary Outcome Card
-function showSummary(ev) {
+function showSummary(ev, outcomeStatus = 'success') {
   const card = document.getElementById('summaryCard');
   card.style.display = 'block';
-  document.getElementById('summaryTraceTag').textContent = ev.trace_id || 'trace-done';
+
+  const titleEl = document.getElementById('summaryCardTitle');
+  const traceTag = document.getElementById('summaryTraceTag');
+
+  traceTag.textContent = ev.trace_id || 'trace-done';
+
+  if (outcomeStatus === 'rejected') {
+    card.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+    card.style.background = 'linear-gradient(145deg, rgba(245, 158, 11, 0.1), rgba(244, 63, 94, 0.05))';
+    if (titleEl) {
+      titleEl.textContent = '⚠️ Workflow Stopped: Action Rejected by User';
+      titleEl.style.color = '#f59e0b';
+    }
+    traceTag.className = 'tag hitl';
+  } else if (outcomeStatus === 'failed') {
+    card.style.borderColor = 'rgba(244, 63, 94, 0.4)';
+    card.style.background = 'linear-gradient(145deg, rgba(244, 63, 94, 0.1), rgba(0, 0, 0, 0.3))';
+    if (titleEl) {
+      titleEl.textContent = '❌ Workflow Execution Failed with Errors';
+      titleEl.style.color = '#fb7185';
+    }
+    traceTag.className = 'tag failed';
+  } else {
+    card.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+    card.style.background = 'linear-gradient(145deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.05))';
+    if (titleEl) {
+      titleEl.textContent = '✨ Workflow Execution Completed Successfully';
+      titleEl.style.color = '#34d399';
+    }
+    traceTag.className = 'tag success';
+  }
+
   document.getElementById('summaryMarkdown').textContent = ev.summary || 'Completed with no additional summary details.';
 }
 
