@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic AI Framework • Localhost Studio</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- ================================================================ -->
+  <!-- Top Application Bar -->
+  <!-- ================================================================ -->
+  <header class="app-header">
+    <a href="#" class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <span class="brand-title">Agentic AI Studio</span>
+        <span class="brand-tag">v2.1 • Animated Core</span>
+      </div>
+    </a>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('workbench')">🛠️ Workbench</button>
+      <button class="tab-btn" onclick="switchTab('studio')">⚡ Live Studio</button>
+      <button class="tab-btn" onclick="switchTab('files')">📁 Files & Tests</button>
+      <button class="tab-btn" onclick="switchTab('telemetry')">📊 Observability</button>
+    </nav>
+
+    <!-- Header Engine Indicator -->
+    <div class="header-status">
+      <div class="pulse-dot" id="headerPulse"></div>
+      <span id="headerStatusText" style="font-weight: 600;">Engine Ready</span>
+    </div>
+  </header>
+
+  <!-- ================================================================ -->
+  <!-- Main Container -->
+  <!-- ================================================================ -->
+  <main class="app-main">
+
+    <!-- ============================================================== -->
+    <!-- TAB 1: WORKBENCH (Task Launcher & Configuration) -->
+    <!-- ============================================================== -->
+    <section id="tab-workbench" class="tab-content active">
+      <div class="workbench-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><span>🚀</span> Dispatch Multi-Agent Workflow</h2>
+            <span class="tag idle" id="workbenchDefaultTag">Configured</span>
+          </div>
+
+          <!-- Mode Selection Grid -->
+          <label class="form-label">Select Execution Strategy</label>
+          <div class="mode-grid">
+            <div class="mode-card selected" onclick="selectMode('run', this)">
+              <div class="mode-icon">🎯</div>
+              <div class="mode-name">Auto-Orchestrate</div>
+              <div class="mode-desc">Dynamic task planner decomposes task into chained specialist agents.</div>
+            </div>
+
+            <div class="mode-card" onclick="selectMode('fix', this)">
+              <div class="mode-icon">🐞</div>
+              <div class="mode-name">Bug Fix Agent</div>
+              <div class="mode-desc">Root-cause investigation, patch formulation & selective regression testing.</div>
+            </div>
+
+            <div class="mode-card" onclick="selectMode('feature', this)">
+              <div class="mode-icon">✨</div>
+              <div class="mode-name">Feature Dev Agent</div>
+              <div class="mode-desc">Retrieves codebase context, synthesizes new functions & updates files.</div>
+            </div>
+
+            <div class="mode-card" onclick="selectMode('review', this)">
+              <div class="mode-icon">🛡️</div>
+              <div class="mode-name">Code Review Agent</div>
+              <div class="mode-desc">AST syntax validation, security analysis & code quality audit.</div>
+            </div>
+
+            <div class="mode-card" onclick="selectMode('test', this)">
+              <div class="mode-icon">🧪</div>
+              <div class="mode-name">Regression Test Agent</div>
+              <div class="mode-desc">Targeted test suite discovery, pytest runner & regression guardrail.</div>
+            </div>
+          </div>
+
+          <!-- Target Project Directory & File -->
+          <div class="options-row">
+            <div class="form-group">
+              <label class="form-label">Target Directory</label>
+              <input type="text" id="targetDirInput" class="form-input" value="demo_target_project" placeholder="e.g. demo_target_project or C:\path\to\project">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target File (Optional)</label>
+              <input type="text" id="targetFileInput" class="form-input" placeholder="e.g. calculator.py or app.py">
+            </div>
+          </div>
+
+          <!-- Task Specification -->
+          <div class="form-group">
+            <label class="form-label">Task Specification / Issue Description</label>
+            <textarea id="taskInput" class="form-textarea" placeholder="Describe the bug, new feature, or code review instructions..."></textarea>
+            
+            <!-- Quick Preset Chips -->
+            <div class="preset-chips">
+              <span class="chip" onclick="applyPreset('Raise ValueError in calculate_bulk_price if quantity is negative', 'fix', 'calculator.py')">🐞 Fix negative quantity check</span>
+              <span class="chip" onclick="applyPreset('Audit calculator.py for input validation and security issues', 'review', 'calculator.py')">🛡️ Audit code quality</span>
+              <span class="chip" onclick="applyPreset('Add a tax calculation function calculate_tax(amount, rate) with default 8.0 in calculator.py', 'feature', 'calculator.py')">✨ Add calculate_tax function</span>
+              <span class="chip" onclick="applyPreset('Verify all existing calculator tests and ensure zero regressions', 'test', 'calculator.py')">🧪 Run targeted regression tests</span>
+            </div>
+          </div>
+
+          <!-- LLM & Safety Settings -->
+          <div class="options-row">
+            <div class="form-group">
+              <label class="form-label">LLM Provider</label>
+              <select id="providerSelect" class="form-select">
+                <option value="openrouter" selected>OpenRouter (DeepSeek / Claude / GPT-4o)</option>
+                <option value="mock">Mock Provider (Instant Local Test - No API Key Needed)</option>
+                <option value="openai">Direct OpenAI</option>
+                <option value="anthropic">Direct Anthropic</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model Identifier</label>
+              <input type="text" id="modelInput" class="form-input" value="deepseek/deepseek-v4-flash-0731">
+            </div>
+          </div>
+
+          <!-- Human-in-the-Loop Switch -->
+          <div class="form-group" style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">🛡️ Human-in-the-Loop (HITL) Web Approval</div>
+              <div style="font-size: 0.78rem; color: var(--text-dim);">Pause and display unified diffs in the web UI for your review before writing files.</div>
+            </div>
+            <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
+              <input type="checkbox" id="hitlToggle" checked style="opacity: 0; width: 0; height: 0;">
+              <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .3s; border-radius: 24px;" id="toggleSlider"></span>
+            </label>
+          </div>
+
+          <!-- Dispatch Button -->
+          <button id="runWorkflowBtn" onclick="launchWorkflow()" class="btn-primary">
+            <span>🚀</span> Launch Agent Workflow
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 2: LIVE STUDIO & ANIMATED PIPELINE (How Agent Is Working) -->
+    <!-- ============================================================== -->
+    <section id="tab-studio" class="tab-content">
+      <div class="studio-container">
+
+        <!-- Live Header Bar -->
+        <div class="live-header">
+          <div class="live-header-info">
+            <div>
+              <div class="live-task-title" id="liveTaskTitle">Ready for Dispatch</div>
+              <div class="live-task-meta" id="liveTaskSub">Select a task from the Workbench to start animated execution.</div>
+            </div>
+          </div>
+          <div class="live-controls">
+            <span class="tag idle" id="liveStatusBadge">IDLE</span>
+            <div class="view-pills">
+              <button class="view-pill active" onclick="setViewMode('flow')">🎨 Visual Flow</button>
+              <button class="view-pill" onclick="setViewMode('console')">💻 Console Stream</button>
+              <button class="view-pill" onclick="setViewMode('split')">🔀 Split View</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- CORE ANIMATED AGENT WORKFLOW CANVAS -->
+        <!-- ========================================================== -->
+        <div class="workflow-canvas-card" id="flowCanvasContainer">
+          
+          <!-- Brain Activity Hologram HUD -->
+          <div class="hud-banner">
+            <div class="hud-left">
+              <div class="holo-orb-container">
+                <div class="holo-ring holo-ring-1"></div>
+                <div class="holo-ring holo-ring-2"></div>
+                <div class="holo-core" id="holoCoreIcon">🧠</div>
+              </div>
+              <div class="hud-status-box">
+                <div class="hud-status-title">
+                  <span id="hudActiveAgent">Agent Engine</span>
+                  <span class="tag running" id="hudStatePill">IDLE</span>
+                </div>
+                <div class="hud-status-desc" id="hudStatusDesc">Waiting for workflow execution to commence...</div>
+              </div>
+            </div>
+
+            <!-- Live HUD Telemetry -->
+            <div class="hud-metrics">
+              <div class="hud-metric-item">
+                <div class="hud-metric-val" id="liveTimer">00:00.0</div>
+                <div class="hud-metric-lbl">Duration</div>
+              </div>
+              <div class="hud-metric-item">
+                <div class="hud-metric-val" id="hudToolsCount">0</div>
+                <div class="hud-metric-lbl">Tools Invoked</div>
+              </div>
+              <div class="hud-metric-item">
+                <div class="hud-metric-val" id="hudGuardrailsStatus" style="color: #34d399;">100%</div>
+                <div class="hud-metric-lbl">Safety Check</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Animated Multi-Node Pipeline -->
+          <div class="pipeline-flow">
+            <!-- Node 1: Input & Guardrail -->
+            <div class="pipe-node idle" id="pnode-input">
+              <div class="pipe-node-icon">🎯</div>
+              <div class="pipe-node-title">Intent & Safety</div>
+              <div class="pipe-node-sub">Input Guardrail</div>
+              <span class="pipe-node-badge" id="pbadge-input">Ready</span>
+            </div>
+
+            <div class="pipe-cable" id="pcable-1"></div>
+
+            <!-- Node 2: Planner & RAG -->
+            <div class="pipe-node idle" id="pnode-planner">
+              <div class="pipe-node-icon">🧠</div>
+              <div class="pipe-node-title">Orchestrator</div>
+              <div class="pipe-node-sub">Graph & RAG Plan</div>
+              <span class="pipe-node-badge" id="pbadge-planner">Waiting</span>
+            </div>
+
+            <div class="pipe-cable" id="pcable-2"></div>
+
+            <!-- Node 3: Specialist Agent -->
+            <div class="pipe-node idle" id="pnode-agent">
+              <div class="pipe-node-icon">🤖</div>
+              <div class="pipe-node-title" id="pnodeAgentTitle">Specialist Agent</div>
+              <div class="pipe-node-sub" id="pnodeAgentSub">Feature / Bug Fix</div>
+              <span class="pipe-node-badge" id="pbadge-agent">Waiting</span>
+            </div>
+
+            <div class="pipe-cable" id="pcable-3"></div>
+
+            <!-- Node 4: MCP Tools & Environment -->
+            <div class="pipe-node idle" id="pnode-tools">
+              <div class="pipe-node-icon">⚡</div>
+              <div class="pipe-node-title">MCP Tools</div>
+              <div class="pipe-node-sub">Files, RAG & Shell</div>
+              <span class="pipe-node-badge" id="pbadge-tools">Waiting</span>
+            </div>
+
+            <div class="pipe-cable" id="pcable-4"></div>
+
+            <!-- Node 5: HITL & Guardrails -->
+            <div class="pipe-node idle" id="pnode-hitl">
+              <div class="pipe-node-icon">🛡️</div>
+              <div class="pipe-node-title">HITL Gate</div>
+              <div class="pipe-node-sub">Diff Approval & AST</div>
+              <span class="pipe-node-badge" id="pbadge-hitl">Waiting</span>
+            </div>
+
+            <div class="pipe-cable" id="pcable-5"></div>
+
+            <!-- Node 6: Regression Gate -->
+            <div class="pipe-node idle" id="pnode-regression">
+              <div class="pipe-node-icon">🧪</div>
+              <div class="pipe-node-title">Regression Gate</div>
+              <div class="pipe-node-sub">Confidence & Pytest</div>
+              <span class="pipe-node-badge" id="pbadge-regression">Waiting</span>
+            </div>
+
+            <div class="pipe-cable" id="pcable-6"></div>
+
+            <!-- Node 7: Output Verified -->
+            <div class="pipe-node idle" id="pnode-output">
+              <div class="pipe-node-icon">✨</div>
+              <div class="pipe-node-title">Solution Verified</div>
+              <div class="pipe-node-sub">Committed & Traced</div>
+              <span class="pipe-node-badge" id="pbadge-output">Waiting</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- FLOATING WEB HITL APPROVAL ALERT -->
+        <!-- ========================================================== -->
+        <div id="hitlAlertCard" class="hitl-alert-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+            <h3 style="color:#f59e0b; font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <span>⚠️</span> <span id="hitlActionTitle">Action Approval Required</span>
+            </h3>
+            <span class="tag" style="background:#f59e0b; color:#000; font-weight:800;">HUMAN-IN-THE-LOOP</span>
+          </div>
+          <p id="hitlDetailsText" style="font-size:0.88rem; color:#cbd5e1; margin-bottom: 0.75rem;"></p>
+          
+          <!-- Unified Diff Preview Box -->
+          <div style="background:#090d16; border:1px solid rgba(245, 158, 11, 0.4); border-radius:8px; padding:0.9rem; font-family:'JetBrains Mono', monospace; font-size:0.8rem; max-height:240px; overflow:auto; white-space:pre; color:#86efac; margin-bottom: 0.8rem;" id="hitlDiffBox"></div>
+
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <input type="text" id="hitlFeedbackInput" class="form-input" placeholder="Optional steering guidance or instructions for the agent...">
+          </div>
+
+          <div class="hitl-actions">
+            <button onclick="resolveHitl(true)" class="btn-approve">✅ Approve & Apply Changes</button>
+            <button onclick="resolveHitl(false)" class="btn-reject">❌ Reject Action</button>
+          </div>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- ACTION TIMELINE & TERMINAL CONSOLE -->
+        <!-- ========================================================== -->
+        <div class="content-split-view" id="contentSplitView">
+          
+          <!-- Left: Live Animated Action Timeline -->
+          <div class="action-timeline-card" id="timelineContainer">
+            <div class="timeline-header">
+              <strong style="font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
+                <span>⚡</span> Live Agent Action Timeline
+              </strong>
+              <span id="eventsCountBadge" style="font-size:0.75rem; color:var(--text-muted);">0 events</span>
+            </div>
+            <div class="timeline-list" id="actionTimelineList">
+              <div style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding: 2rem;">
+                No events yet. Dispatch a task to watch the agent take actions in real-time.
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Terminal Console Stream -->
+          <div class="terminal-container" id="terminalContainer" style="display: none;">
+            <div class="terminal-bar">
+              <div class="term-dots">
+                <span class="term-dot" style="background:#ef4444;"></span>
+                <span class="term-dot" style="background:#f59e0b;"></span>
+                <span class="term-dot" style="background:#10b981;"></span>
+              </div>
+              <div>REAL-TIME WORKFLOW EXECUTION STREAM</div>
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem;">
+                  <input type="checkbox" id="autoScrollCheck" checked> Auto-scroll
+                </label>
+                <button onclick="clearTerminal()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:0.75rem;">Clear</button>
+              </div>
+            </div>
+            <div class="terminal-output" id="terminalOutput">
+              <div class="log-line">
+                <span class="log-time">[system]</span>
+                <span class="log-content" style="color:var(--text-muted);">Ready. Dispatch a task from the Workbench tab to begin real-time streaming.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Final Summary Outcome Card -->
+        <div id="summaryCard" class="summary-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+            <h3 style="color:#34d399; font-size:1.1rem; font-weight:700;">✨ Workflow Execution Completed Successfully</h3>
+            <span class="tag success" id="summaryTraceTag">trace</span>
+          </div>
+          <div id="summaryMarkdown" style="font-size:0.88rem; line-height:1.6; white-space:pre-wrap; font-family:'JetBrains Mono', monospace; background:rgba(0,0,0,0.3); padding:1rem; border-radius:10px;"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 3: FILES & TESTS -->
+    <!-- ============================================================== -->
+    <section id="tab-files" class="tab-content">
+      <div class="files-grid">
+        
+        <!-- Left: File Tree Explorer -->
+        <div class="file-tree-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <strong style="font-size: 0.95rem;">Target Codebase</strong>
+            <button onclick="refreshFileTree()" style="background:transparent; border:none; color:var(--accent-primary); cursor:pointer; font-size:0.8rem;">↻ Refresh</button>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.8rem;" id="fileTreeRoot">demo_target_project</div>
+          
+          <button onclick="runPytestInBrowser()" class="btn-primary" style="padding: 0.55rem; font-size: 0.82rem; margin-bottom: 1rem;">
+            🧪 Run Pytest Suite
+          </button>
+
+          <ul class="file-list" id="fileTreeList">
+            <li class="file-item">Loading files...</li>
+          </ul>
+        </div>
+
+        <!-- Right: Code Content Viewer -->
+        <div class="code-viewer-card">
+          <div class="code-header">
+            <span id="activeFilePath">calculator.py</span>
+            <span id="activeFileMeta" style="color: var(--text-muted);">Python Module</span>
+          </div>
+          <div class="code-body" id="codeViewerBody">Select a file from the left to inspect source code.</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- TAB 4: TELEMETRY & OBSERVABILITY -->
+    <!-- ============================================================== -->
+    <section id="tab-telemetry" class="tab-content">
+      
+      <!-- Metrics Overview -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Total Recorded Traces</div>
+          <div class="metric-val" id="metricTraces" style="color: var(--accent-primary);">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Execution Spans</div>
+          <div class="metric-val" id="metricSpans" style="color: var(--accent-cyan);">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Tokens Consumed</div>
+          <div class="metric-val" id="metricTokens" style="color: var(--accent-violet);">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Cache Efficiency</div>
+          <div class="metric-val" id="metricCache" style="color: var(--accent-emerald);">100%</div>
+        </div>
+      </div>
+
+      <!-- Traces Table -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Trace ID</th>
+              <th>Task Specification</th>
+              <th>Target Project</th>
+              <th>Spans</th>
+              <th>Status</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="tracesTableBody">
+            <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Loading traces...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- External Application Logic -->
+  <script src="/app.js"></script>
+</body>
+</html>

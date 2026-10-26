@@ -24,7 +24,7 @@ from pathlib import Path
 from agentic_framework.config import settings
 from agentic_framework.orchestrator.graph import orchestrator
 from agentic_framework.rag.retriever import retriever
-from agentic_framework.observability.dashboard import run_dashboard
+from agentic_framework.web.server import run_dashboard
 from agentic_framework.mcp.server import mcp_server
 from agentic_framework.observability.logger import logger, console
 
@@ -81,8 +81,8 @@ def main():
     idx_parser.add_argument("--target-dir", "-d", default=".", help="Path to target project")
     idx_parser.add_argument("--rebuild", action="store_true", help="Force rebuild existing index")
 
-    # 7. dashboard (Observability UI)
-    dash_parser = subparsers.add_parser("dashboard", help="Start web observability dashboard")
+    # 7. dashboard / ui / web (Interactive Web Studio & Observability UI)
+    dash_parser = subparsers.add_parser("dashboard", aliases=["ui", "web"], help="Start interactive web studio & dashboard at localhost")
     dash_parser.add_argument("--port", "-p", type=int, default=8088, help="Port to listen on (default 8088)")
     dash_parser.add_argument("--host", default="127.0.0.1", help="Host interface (default 127.0.0.1)")
 
@@ -152,8 +152,8 @@ def main():
         count = retriever.initialize_index(force_rebuild=args.rebuild)
         logger.success(f"Indexed {count} code chunks in {settings.TARGET_PROJECT_PATH}")
 
-    elif args.command == "dashboard":
-        logger.info(f"Starting Observability Web Dashboard at http://{args.host}:{args.port}")
+    elif args.command in ("dashboard", "ui", "web"):
+        logger.info(f"Starting Agentic AI Localhost Web Studio at http://{args.host}:{args.port}")
         run_dashboard(host=args.host, port=args.port)
 
     elif args.command == "mcp-serve":

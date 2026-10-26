@@ -6,7 +6,7 @@ RegressionTestAgent), executes dynamic plans, manages shared state, and collects
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from rich.panel import Panel
 from rich.table import Table
 from agentic_framework.config import settings
@@ -17,7 +17,7 @@ from agentic_framework.agents.regression_test_agent import regression_test_agent
 from agentic_framework.orchestrator.planner import task_planner, PlanStep
 from agentic_framework.rag.retriever import retriever
 from agentic_framework.observability.tracer import tracer
-from agentic_framework.observability.logger import logger, console
+from agentic_framework.observability.logger import logger, console, AgentLogger
 
 
 @dataclass
@@ -146,6 +146,7 @@ class MultiAgentOrchestrator:
                 should_run, reason, target_test = self._evaluate_regression_gate(prev_out, target_path)
                 if not should_run:
                     console.print(f"\n[bold green]⚡ [Regression Gate][/bold green] [dim]{reason}[/dim]")
+                    AgentLogger._emit({"type": "regression_gate", "status": "skipped", "reason": reason})
                     state.agent_outputs[f"step_{s.step_id}_{s.agent_name}"] = {
                         "agent": s.agent_name,
                         "role": "Regression Verification Gatekeeper",
@@ -154,6 +155,7 @@ class MultiAgentOrchestrator:
                     }
                     continue
                 else:
+                    AgentLogger._emit({"type": "regression_gate", "status": "active", "target_test": target_test, "reason": reason})
                     # Restrict scope to ONLY the updated file and its matching test
                     if target_test:
                         s.task = (

@@ -5,7 +5,7 @@ HITL approval gates, and observability tracing.
 """
 
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from agentic_framework.core.llm import llm_client
 from agentic_framework.mcp.tools import tool_registry
 from agentic_framework.observability.tracer import tracer
