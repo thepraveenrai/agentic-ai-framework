@@ -162,25 +162,7 @@ agentic-ai run --target-dir "C:\path\to\my-project" --task "..." --no-hitl
 
 ---
 
-## 5. Web Observability Dashboard
-
-Inspect agent reasoning, ReAct thoughts, tool calls, token usage, and latency in real time.
-
-Start the dashboard:
-```bash
-agentic-ai dashboard --port 8088
-```
-Then open your browser at **`http://localhost:8088`**.
-
-### Dashboard Features:
-- **Trace Explorer:** Browse every execution trace session.
-- **Agent Reasoning Timeline:** Inspect ReAct thoughts and step-by-step logic.
-- **Tool Invocations:** View exact tool parameters, outputs, and execution latencies in milliseconds.
-- **Cost & Token Telemetry:** Track total prompt/completion tokens and estimated USD expenditure.
-
----
-
-## 6. Model Context Protocol (MCP) Mode
+## 5. Model Context Protocol (MCP) Mode
 
 The framework can run as a standard MCP server to expose project tools to Cursor, Claude Desktop, Antigravity, or other MCP clients:
 ```bash

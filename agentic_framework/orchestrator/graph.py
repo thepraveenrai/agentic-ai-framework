@@ -146,7 +146,6 @@ class MultiAgentOrchestrator:
                 should_run, reason, target_test = self._evaluate_regression_gate(prev_out, target_path)
                 if not should_run:
                     console.print(f"\n[bold green]⚡ [Regression Gate][/bold green] [dim]{reason}[/dim]")
-                    AgentLogger._emit({"type": "regression_gate", "status": "skipped", "reason": reason})
                     state.agent_outputs[f"step_{s.step_id}_{s.agent_name}"] = {
                         "agent": s.agent_name,
                         "role": "Regression Verification Gatekeeper",
@@ -155,7 +154,6 @@ class MultiAgentOrchestrator:
                     }
                     continue
                 else:
-                    AgentLogger._emit({"type": "regression_gate", "status": "active", "target_test": target_test, "reason": reason})
                     # Restrict scope to ONLY the updated file and its matching test
                     if target_test:
                         s.task = (
@@ -300,12 +298,28 @@ class MultiAgentOrchestrator:
             agent_name = out.get("agent", "Agent")
             status = out.get("status", "unknown")
             output_snippet = out.get("output", "").strip()
-            # Truncate if very long
-            if len(output_snippet) > 600:
-                output_snippet = output_snippet[:600] + "\n...(see full trace for details)"
-            lines.append(f"- **{agent_name}** `[{status.upper()}]`:\n  {output_snippet}\n")
 
-        return "\n".join(lines)
+            # Clean out prompt/context echoes if present
+            if "\n\nContext:" in output_snippet:
+                output_snippet = output_snippet.split("\n\nContext:")[0].strip()
+            elif "\nContext:" in output_snippet:
+                output_snippet = output_snippet.split("\nContext:")[0].strip()
+
+            # Truncate if very long
+            if len(output_snippet) > 400:
+                output_snippet = output_snippet[:397] + "..."
+
+            lines.append(f"- **{agent_name}** `[{status.upper()}]`:\n  {output_snippet}")
+
+            # Highlight modified files if any
+            mod_files = out.get("modified_files", [])
+            lines_changed = out.get("total_lines_changed", 0)
+            if mod_files:
+                files_str = ", ".join(Path(f).name for f in mod_files)
+                lines.append(f"  [dim]Files Modified: {files_str} ({lines_changed} lines changed)[/dim]")
+            lines.append("")
+
+        return "\n".join(lines).strip()
 
 
 orchestrator = MultiAgentOrchestrator()

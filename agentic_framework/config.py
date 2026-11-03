@@ -63,9 +63,8 @@ class FrameworkSettings(BaseSettings):
 
     # Observability
     OBSERVABILITY_ENABLED: bool = Field(default=True, description="Enable tracing and metrics collection")
-    LOG_LEVEL: str = Field(default="INFO", description="Console log level")
+    LOG_LEVEL: str = Field(default="INFO", description="Console log level (DEBUG, INFO, WARNING, ERROR)")
     TRACES_DIR: str = Field(default=".agentic_traces", description="Directory to store execution traces")
-    DASHBOARD_PORT: int = Field(default=8088, description="Port for the live observability dashboard")
 
     # RAG Settings
     RAG_TOP_K: int = Field(default=5, description="Number of code chunks to retrieve per search")

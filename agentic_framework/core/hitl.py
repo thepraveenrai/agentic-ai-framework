@@ -47,7 +47,7 @@ class HITLManager:
         self._custom_callback: Optional[Callable[..., HITLDecision]] = None
 
     def set_callback(self, callback: Optional[Callable[..., HITLDecision]]) -> None:
-        """Register programmatic approval callback for web or API integrations."""
+        """Register programmatic approval callback for custom integrations."""
         self._custom_callback = callback
 
     def request_approval(
@@ -64,7 +64,7 @@ class HITLManager:
         if self.mode == "on_modify" and risk_level == ActionRiskLevel.LOW:
             return HITLDecision.APPROVE
 
-        # If custom callback registered (e.g. from Web UI / Dashboard / API)
+        # If custom callback registered (e.g. from API or custom caller)
         if self._custom_callback is not None:
             try:
                 # Preferred: 4-argument signature (action_name, details, risk, metadata)

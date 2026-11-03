@@ -8,7 +8,7 @@ The **Agentic AI Framework** is a production-grade, project-agnostic autonomous 
 
 ```mermaid
 graph TD
-    User["Developer / CLI / Web UI"] --> Orchestrator["Multi-Agent Orchestrator (StateGraph & Dynamic Planner)"]
+    User["Developer / CLI"] --> Orchestrator["Multi-Agent Orchestrator (StateGraph & Dynamic Planner)"]
     
     subgraph Guardrails ["Security & Quality Guardrails"]
         IG["Input Guardrail: Prompt Injection & Secret Redaction"]
@@ -34,7 +34,7 @@ graph TD
         MCP["MCP Layer (Model Context Protocol JSON-RPC 2.0 Server/Client)"]
         Cache["Multi-Tier Cache (Exact LLM Hash, TTL, File Hashes)"]
         HITL["HITL Controller (Interactive Approvals, Unified Diffs)"]
-        Obs["Observability Tracer (Spans, Tokens, Costs, Dashboard UI)"]
+        Obs["Observability Tracer (Spans, Tokens, Costs, JSON Traces)"]
     end
 
     BFA <--> CoreEngine
@@ -123,7 +123,7 @@ Safety is paramount when an autonomous agent edits files or runs shell scripts:
 
 ---
 
-### G. Observability & Real-Time Dashboard
+### G. Observability & Tracing
 - **Telemetry Engine (`tracer.py`):** Records every agent thought, tool call, token count, execution latency, estimated USD cost, and span status.
 - **Traces Persistence:** Saved as structured JSON in `.agentic_traces/`.
-- **FastAPI Web Dashboard (`dashboard.py`):** Embedded real-time web UI showing execution graphs, latency distribution, token consumption, and agent reasoning logs.
+- **Clean CLI Observability:** Formatted, high-signal command-line output with noisy external loggers suppressed.

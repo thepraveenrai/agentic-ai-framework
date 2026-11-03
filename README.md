@@ -17,7 +17,7 @@ Equipped with **4 specialized AI agents**, **Codebase RAG**, **Model Context Pro
 | **🛡️ Dual-Phase Guardrails** | • **Input Guardrail:** Blocks prompt injections, jailbreaks, and automatically redacts secret API keys / credentials.<br>• **Output Guardrail:** Blocks destructive commands (`rm -rf /`, `rmdir /s /q`, format, fork bombs) and validates code syntax via AST before writing. |
 | **⚡ Multi-Tier Caching** | Exact SHA-256 LLM response caching with TTL and token telemetry. Eliminates redundant latency and API costs. Tracks saved tokens and cost savings. |
 | **👤 Human-in-the-Loop (HITL)** | Interactive terminal approval checkpoints before modifying code or running shell commands. Displays colorized unified diffs with **Approve `[y]`**, **Reject `[n]`**, or **Feedback `[f]`** options. |
-| **📊 Real-Time Observability** | OpenTelemetry-compatible tracing of every reasoning step, tool call, latency, token count, and cost. Includes an embedded **FastAPI Web Dashboard** (`http://localhost:8088`). |
+| **📊 Real-Time Observability** | OpenTelemetry-compatible tracing of every reasoning step, tool call, latency, token count, and cost. Traces are stored in `.agentic_traces/` with clean, low-noise terminal output. |
 | **🌐 Project Agnostic** | Plug-and-play with **any** codebase: Python, TypeScript/JavaScript, Go, Rust, Java, C++, etc. Auto-detects package managers and test runners. |
 
 ---
@@ -26,7 +26,7 @@ Equipped with **4 specialized AI agents**, **Codebase RAG**, **Model Context Pro
 
 ```mermaid
 graph TD
-    User["Developer / CLI / Web UI"] --> Orchestrator["Multi-Agent Orchestrator"]
+    User["Developer / CLI"] --> Orchestrator["Multi-Agent Orchestrator"]
     
     subgraph Guardrails ["Security & Quality Guardrails"]
         IG["Input Guardrail: Prompt Injection & Secret Redaction"]
@@ -52,7 +52,7 @@ graph TD
         MCP["MCP Layer (JSON-RPC 2.0 Server & Client)"]
         Cache["Multi-Tier Cache (Exact Hash, TTL, Token Telemetry)"]
         HITL["HITL Controller (Interactive Approvals, Unified Diffs)"]
-        Obs["Observability Tracer (Spans, Tokens, Costs, Dashboard UI)"]
+        Obs["Observability Tracer (Spans, Tokens, Costs, JSON Traces)"]
     end
 
     BFA <--> CoreEngine
@@ -135,13 +135,7 @@ agentic-ai run --target-dir "C:/path/to/project" --task "Implement discount code
 ```
 The **Orchestrator** creates a multi-agent plan (`FeatureDevAgent` -> `RegressionTestAgent` -> `TechReviewAgent`), passes context between agents, and presents a consolidated summary.
 
-### 6. Launch the Live Observability Web Dashboard
-```bash
-agentic-ai dashboard --port 8088
-```
-Open **`http://localhost:8088`** to inspect real-time agent reasoning steps, tool calls, token metrics, and latency.
-
-### 7. Run as a Model Context Protocol (MCP) Server
+### 6. Run as a Model Context Protocol (MCP) Server
 ```bash
 agentic-ai mcp-serve
 ```

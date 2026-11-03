@@ -1,10 +1,12 @@
 """Rich Structured Logging for Agentic AI Framework.
 
-Provides beautiful terminal panels, agent action highlights, diff rendering,
-and hierarchical output.
+Provides clean terminal output, agent action highlights, diff rendering,
+and suppresses noisy third-party libraries so only necessary info appears on the console.
 """
 
+import logging
 import sys
+from typing import Optional, Any, Dict
 
 # Ensure UTF-8 output on Windows consoles
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
@@ -19,12 +21,16 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
+# Suppress noisy third-party loggers (HTTP requests, connection pooling, etc.)
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+for _noisy_logger in ("httpx", "httpcore", "openai", "urllib3", "asyncio", "charset_normalizer"):
+    logging.getLogger(_noisy_logger).setLevel(logging.WARNING)
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
-from rich.table import Table
 from rich.theme import Theme
-from typing import Optional, Any, List, Callable, Dict
+from agentic_framework.config import settings
 
 custom_theme = Theme({
     "info": "cyan",
@@ -39,45 +45,44 @@ custom_theme = Theme({
 
 console = Console(theme=custom_theme, safe_box=True)
 
+# Standard log level priority mapping
+LOG_LEVEL_ORDER = {
+    "DEBUG": 10,
+    "INFO": 20,
+    "WARNING": 30,
+    "ERROR": 40,
+}
+
 
 class AgentLogger:
     """Specialized clean logger for multi-agent interactions."""
 
-    _subscribers: List[Callable[[Dict[str, Any]], None]] = []
-
-    @classmethod
-    def subscribe(cls, callback: Callable[[Dict[str, Any]], None]) -> None:
-        """Register a real-time event listener (e.g. for Web UI / SSE)."""
-        if callback not in cls._subscribers:
-            cls._subscribers.append(callback)
-
-    @classmethod
-    def unsubscribe(cls, callback: Callable[[Dict[str, Any]], None]) -> None:
-        """Unregister an event listener."""
-        if callback in cls._subscribers:
-            cls._subscribers.remove(callback)
-
-    @classmethod
-    def _emit(cls, event_type_or_payload: Any, data: Optional[Dict[str, Any]] = None) -> None:
-        import time
-        if isinstance(event_type_or_payload, dict):
-            payload = {"timestamp": time.time(), **event_type_or_payload}
-        else:
-            payload = {"type": str(event_type_or_payload), "timestamp": time.time(), **(data or {})}
-        for cb in list(cls._subscribers):
-            try:
-                cb(payload)
-            except Exception:
-                pass
+    @staticmethod
+    def _is_enabled(level_name: str) -> bool:
+        """Check if message level satisfies configured settings.LOG_LEVEL."""
+        configured = settings.LOG_LEVEL.upper() if hasattr(settings, "LOG_LEVEL") else "INFO"
+        req_lvl = LOG_LEVEL_ORDER.get(configured, 20)
+        msg_lvl = LOG_LEVEL_ORDER.get(level_name.upper(), 20)
+        return msg_lvl >= req_lvl
 
     @staticmethod
-    def agent_start(agent_name: str, task: str) -> None:
-        console.print(f"\n[bold magenta]🤖 [{agent_name}][/bold magenta] [white]{task}[/white]")
-        AgentLogger._emit("agent_start", {"agent": agent_name, "task": task})
+    def _emit(event_type_or_payload: Any = None, data: Optional[Dict[str, Any]] = None) -> None:
+        """Safe no-op kept for backward compatibility."""
+        pass
 
-    @staticmethod
-    def thought(agent_name: str, thought_text: str) -> None:
-        if thought_text and thought_text.strip():
+    @classmethod
+    def agent_start(cls, agent_name: str, task: str) -> None:
+        if cls._is_enabled("INFO"):
+            console.print(f"\n[bold magenta]🤖 [{agent_name}][/bold magenta] [white]{task}[/white]")
+
+    @classmethod
+    def thought(cls, agent_name: str, thought_text: str) -> None:
+        """Internal model reasoning/scratchpad.
+
+        Suppressed on normal INFO runs to prevent terminal clutter;
+        displayed only when LOG_LEVEL is explicitly set to DEBUG.
+        """
+        if cls._is_enabled("DEBUG") and thought_text and thought_text.strip():
             first_line = thought_text.strip().splitlines()[0].strip()
             if first_line.startswith("#"):
                 first_line = first_line.lstrip("#").strip()
@@ -85,33 +90,35 @@ class AgentLogger:
                 first_line = first_line[:97] + "..."
             if first_line:
                 console.print(f"  [dim]💭 {first_line}[/dim]")
-            AgentLogger._emit("thought", {"agent": agent_name, "thought": thought_text.strip()})
 
-    @staticmethod
-    def tool_call(tool_name: str, detail: Optional[str] = None) -> None:
+    @classmethod
+    def tool_call(cls, tool_name: str, detail: Optional[str] = None) -> None:
+        if not cls._is_enabled("INFO"):
+            return
         if detail:
-            d_str = str(detail)
-            if len(d_str) > 60:
-                d_str = "..." + d_str[-57:]
-            extra = f" [dim]({d_str})[/dim]"
+            clean_detail = str(detail).strip().replace("\r", "").replace("\n", " ")
+            if len(clean_detail) > 60:
+                clean_detail = clean_detail[:57] + "..."
+            extra = f" [dim]({clean_detail})[/dim]"
         else:
             extra = ""
         console.print(f"  [cyan]•[/cyan] {tool_name}{extra}")
-        AgentLogger._emit("tool_call", {"tool": tool_name, "detail": detail or ""})
 
-    @staticmethod
-    def tool_error(tool_name: str, error_msg: str) -> None:
-        console.print(f"  [error]✗ Tool {tool_name} error:[/error] {error_msg}")
-        AgentLogger._emit("tool_error", {"tool": tool_name, "error": error_msg})
+    @classmethod
+    def tool_error(cls, tool_name: str, error_msg: str) -> None:
+        if cls._is_enabled("ERROR"):
+            clean_err = str(error_msg).strip().replace("\r", "").replace("\n", " ")
+            if len(clean_err) > 120:
+                clean_err = clean_err[:117] + "..."
+            console.print(f"  [error]✗ Tool {tool_name} error:[/error] {clean_err}")
 
-    @staticmethod
-    def guardrail_alert(guardrail_name: str, message: str, passed: bool) -> None:
-        if not passed:
+    @classmethod
+    def guardrail_alert(cls, guardrail_name: str, message: str, passed: bool) -> None:
+        if not passed and cls._is_enabled("WARNING"):
             console.print(Panel(f"[error]🛡️ Guardrail [{guardrail_name}] Blocked:[/error]\n{message}", border_style="red"))
-        AgentLogger._emit("guardrail", {"name": guardrail_name, "message": message, "passed": passed})
 
-    @staticmethod
-    def hitl_prompt(action_name: str, details: str) -> None:
+    @classmethod
+    def hitl_prompt(cls, action_name: str, details: str) -> None:
         console.print(
             Panel(
                 f"[hitl]⚠️ Human Approval Required[/hitl]\n"
@@ -120,34 +127,33 @@ class AgentLogger:
                 border_style="yellow",
             )
         )
-        AgentLogger._emit("hitl_prompt", {"action": action_name, "details": details})
 
-    @staticmethod
-    def diff(file_path: str, diff_text: str) -> None:
-        console.print(f"\n[bold yellow]Proposed Patch for {file_path}:[/bold yellow]")
-        syntax = Syntax(diff_text, "diff", theme="monokai", line_numbers=True)
-        console.print(syntax)
-        AgentLogger._emit("diff", {"file_path": file_path, "diff": diff_text})
+    @classmethod
+    def diff(cls, file_path: str, diff_text: str) -> None:
+        if cls._is_enabled("INFO"):
+            console.print(f"\n[bold yellow]Proposed Patch for {file_path}:[/bold yellow]")
+            syntax = Syntax(diff_text, "diff", theme="monokai", line_numbers=True)
+            console.print(syntax)
 
-    @staticmethod
-    def info(msg: str) -> None:
-        console.print(f"[info]ℹ️ {msg}[/info]")
-        AgentLogger._emit("info", {"message": msg})
+    @classmethod
+    def info(cls, msg: str) -> None:
+        if cls._is_enabled("INFO"):
+            console.print(f"[info]ℹ️ {msg}[/info]")
 
-    @staticmethod
-    def success(msg: str) -> None:
-        console.print(f"[success]✅ {msg}[/success]")
-        AgentLogger._emit("success", {"message": msg})
+    @classmethod
+    def success(cls, msg: str) -> None:
+        if cls._is_enabled("INFO"):
+            console.print(f"[success]✅ {msg}[/success]")
 
-    @staticmethod
-    def warning(msg: str) -> None:
-        console.print(f"[warning]⚠️ {msg}[/warning]")
-        AgentLogger._emit("warning", {"message": msg})
+    @classmethod
+    def warning(cls, msg: str) -> None:
+        if cls._is_enabled("WARNING"):
+            console.print(f"[warning]⚠️ {msg}[/warning]")
 
-    @staticmethod
-    def error(msg: str) -> None:
-        console.print(f"[error]❌ {msg}[/error]")
-        AgentLogger._emit("error", {"message": msg})
+    @classmethod
+    def error(cls, msg: str) -> None:
+        if cls._is_enabled("ERROR"):
+            console.print(f"[error]❌ {msg}[/error]")
 
 
 logger = AgentLogger()
