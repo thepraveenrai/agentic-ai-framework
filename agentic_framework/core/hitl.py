@@ -6,7 +6,7 @@ before applying code modifications or executing terminal commands.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, ClassVar
 from rich.prompt import Prompt
 from agentic_framework.config import settings
 from agentic_framework.observability.logger import logger
@@ -24,6 +24,9 @@ class HITLDecision:
     user_feedback: Optional[str] = None
     modified_payload: Optional[Any] = None
 
+    APPROVE: ClassVar["HITLDecision"]
+    REJECT: ClassVar["HITLDecision"]
+
     @classmethod
     def approve(cls, feedback: Optional[str] = None) -> "HITLDecision":
         return cls(approved=True, user_feedback=feedback)
@@ -34,8 +37,8 @@ class HITLDecision:
 
 
 # Constants for convenience and backward compatibility
-HITLDecision.APPROVE = HITLDecision(approved=True)  # type: ignore
-HITLDecision.REJECT = HITLDecision(approved=False, user_feedback="Operation rejected by user.")  # type: ignore
+HITLDecision.APPROVE = HITLDecision(approved=True)
+HITLDecision.REJECT = HITLDecision(approved=False, user_feedback="Operation rejected by user.")
 
 
 class HITLManager:

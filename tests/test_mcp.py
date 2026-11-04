@@ -54,3 +54,29 @@ def test_mcp_server_tools_call():
     assert resp["id"] == 3
     assert not resp["result"]["isError"]
     assert "languages" in resp["result"]["content"][0]["text"].lower()
+
+
+def test_mcp_server_tools_call_missing_or_invalid_name():
+    # Missing name
+    req = {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {},
+    }
+    resp = mcp_server.handle_request(req)
+    assert resp["id"] == 4
+    assert "error" in resp
+    assert resp["error"]["code"] == -32602
+
+    # None name
+    req_none = {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "tools/call",
+        "params": {"name": None},
+    }
+    resp_none = mcp_server.handle_request(req_none)
+    assert resp_none["id"] == 5
+    assert "error" in resp_none
+    assert resp_none["error"]["code"] == -32602

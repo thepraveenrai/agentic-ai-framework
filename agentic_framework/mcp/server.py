@@ -69,6 +69,11 @@ class MCPServer:
     def _handle_tools_call(self, req_id: Any, params: Dict[str, Any]) -> Dict[str, Any]:
         name = params.get("name")
         arguments = params.get("arguments", {})
+        if not isinstance(arguments, dict):
+            arguments = {}
+
+        if not isinstance(name, str) or not name:
+            return self._error(req_id, -32602, f"Unknown tool: {name}")
 
         tool = tool_registry.get(name)
         if not tool:

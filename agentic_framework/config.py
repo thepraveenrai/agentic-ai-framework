@@ -71,6 +71,32 @@ class FrameworkSettings(BaseSettings):
     RAG_CHUNK_SIZE: int = Field(default=60, description="Target lines per code chunk")
     RAG_CHUNK_OVERLAP: int = Field(default=10, description="Line overlap between chunks")
 
+    # Enterprise Integrations Settings
+    # 1. GitLab
+    GITLAB_URL: str = Field(default="https://gitlab.com", description="GitLab instance URL (e.g. https://gitlab.mycompany.com)")
+    GITLAB_TOKEN: Optional[str] = Field(default=None, description="GitLab Personal Access Token")
+    GITLAB_PROJECT_ID: Optional[str] = Field(default=None, description="Default GitLab Project ID or URL-encoded path")
+
+    # 2. GitHub
+    GITHUB_TOKEN: Optional[str] = Field(default=None, description="GitHub Personal Access Token")
+    GITHUB_API_URL: str = Field(default="https://api.github.com", description="GitHub REST API URL")
+    GITHUB_REPOSITORY: Optional[str] = Field(default=None, description="Default GitHub repository (e.g. owner/repo)")
+
+    # 3. Jira
+    JIRA_URL: Optional[str] = Field(default=None, description="Jira instance URL (e.g. https://mycompany.atlassian.net)")
+    JIRA_EMAIL: Optional[str] = Field(default=None, description="Jira user email or username")
+    JIRA_API_TOKEN: Optional[str] = Field(default=None, description="Jira API token or password")
+
+    # 4. Gmail
+    GMAIL_USER: Optional[str] = Field(default=None, description="Gmail address for sending/replying")
+    GMAIL_APP_PASSWORD: Optional[str] = Field(default=None, description="Gmail 16-character App Password")
+    GMAIL_SMTP_HOST: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    GMAIL_SMTP_PORT: int = Field(default=587, description="SMTP server port (587 TLS or 465 SSL)")
+
+    # 5. Slack
+    SLACK_BOT_TOKEN: Optional[str] = Field(default=None, description="Slack Bot Token (xoxb-...)")
+    SLACK_DEFAULT_CHANNEL: Optional[str] = Field(default=None, description="Default Slack channel (e.g. C12345678 or #general)")
+
     def get_target_path(self) -> Path:
         """Return resolved target project Path (always a directory)."""
         p = Path(self.TARGET_PROJECT_PATH).resolve()

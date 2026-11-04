@@ -16,6 +16,13 @@ from agentic_framework.rag.retriever import retriever
 from agentic_framework.utils.diff_utils import diff_utils
 from agentic_framework.utils.project_analyzer import project_analyzer
 from agentic_framework.observability.logger import logger
+from agentic_framework.integrations import (
+    gitlab_integration,
+    github_integration,
+    jira_integration,
+    gmail_integration,
+    slack_integration,
+)
 
 
 @dataclass
@@ -234,6 +241,205 @@ class MCPToolRegistry:
             )
         )
 
+        # 9. gitlab_workflow
+        self.register(
+            ToolDefinition(
+                name="gitlab_workflow",
+                description="Stage changes, commit, push branch to GitLab, and create a Merge Request.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "current_branch": {"type": "string", "description": "Branch to create/push (e.g. 'fix/issue-12')"},
+                        "target_branch": {"type": "string", "description": "Target branch to merge into (default: 'main')", "default": "main"},
+                        "commit_message": {"type": "string", "description": "Git commit message"},
+                        "create_mr": {"type": "boolean", "description": "Create a GitLab Merge Request (default: true)", "default": True},
+                        "mr_title": {"type": "string", "description": "Optional custom MR title"},
+                        "mr_description": {"type": "string", "description": "Optional custom MR description"},
+                        "files": {"type": "array", "items": {"type": "string"}, "description": "Optional list of files to stage"},
+                        "project_id": {"type": "string", "description": "Optional GitLab project ID or URL-encoded path"},
+                    },
+                    "required": ["current_branch", "commit_message"],
+                },
+                func=self._tool_gitlab_workflow,
+                risk_level=ActionRiskLevel.HIGH,
+            )
+        )
+
+        # 10. github_workflow
+        self.register(
+            ToolDefinition(
+                name="github_workflow",
+                description="Stage changes, commit, push branch to GitHub, and create a Pull Request.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "current_branch": {"type": "string", "description": "Branch to create/push (e.g. 'fix/issue-12')"},
+                        "target_branch": {"type": "string", "description": "Target branch to merge into (default: 'main')", "default": "main"},
+                        "commit_message": {"type": "string", "description": "Git commit message"},
+                        "create_pr": {"type": "boolean", "description": "Create a GitHub Pull Request (default: true)", "default": True},
+                        "pr_title": {"type": "string", "description": "Optional custom PR title"},
+                        "pr_description": {"type": "string", "description": "Optional custom PR description"},
+                        "files": {"type": "array", "items": {"type": "string"}, "description": "Optional list of files to stage"},
+                        "repository": {"type": "string", "description": "Optional GitHub repository ('owner/repo')"},
+                    },
+                    "required": ["current_branch", "commit_message"],
+                },
+                func=self._tool_github_workflow,
+                risk_level=ActionRiskLevel.HIGH,
+            )
+        )
+
+        # 11. jira_update_status
+        self.register(
+            ToolDefinition(
+                name="jira_update_status",
+                description="Transition Jira ticket status (e.g. 'In Progress', 'In Review', 'Done').",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "issue_key": {"type": "string", "description": "Jira ticket key (e.g. 'PROJ-123')"},
+                        "status_name": {"type": "string", "description": "Target status name"},
+                        "comment": {"type": "string", "description": "Optional comment during transition"},
+                    },
+                    "required": ["issue_key", "status_name"],
+                },
+                func=self._tool_jira_update_status,
+                risk_level=ActionRiskLevel.MEDIUM,
+            )
+        )
+
+        # 12. jira_add_comment
+        self.register(
+            ToolDefinition(
+                name="jira_add_comment",
+                description="Add a comment to a Jira ticket.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "issue_key": {"type": "string", "description": "Jira ticket key (e.g. 'PROJ-123')"},
+                        "comment": {"type": "string", "description": "Comment content"},
+                    },
+                    "required": ["issue_key", "comment"],
+                },
+                func=self._tool_jira_add_comment,
+                risk_level=ActionRiskLevel.LOW,
+            )
+        )
+
+        # 13. jira_get_issue
+        self.register(
+            ToolDefinition(
+                name="jira_get_issue",
+                description="Get details, status, and summary of a Jira ticket.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "issue_key": {"type": "string", "description": "Jira ticket key (e.g. 'PROJ-123')"},
+                    },
+                    "required": ["issue_key"],
+                },
+                func=self._tool_jira_get_issue,
+                risk_level=ActionRiskLevel.LOW,
+            )
+        )
+
+        # 14. gmail_send
+        self.register(
+            ToolDefinition(
+                name="gmail_send",
+                description="Send an email via Gmail SMTP.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "to_email": {"type": "string", "description": "Recipient email address"},
+                        "subject": {"type": "string", "description": "Email subject"},
+                        "body": {"type": "string", "description": "Email body (plain text or markdown)"},
+                        "cc": {"type": "array", "items": {"type": "string"}, "description": "Optional CC addresses"},
+                    },
+                    "required": ["to_email", "subject", "body"],
+                },
+                func=self._tool_gmail_send,
+                risk_level=ActionRiskLevel.HIGH,
+            )
+        )
+
+        # 15. gmail_reply
+        self.register(
+            ToolDefinition(
+                name="gmail_reply",
+                description="Reply to an email thread with proper In-Reply-To and References headers.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "to_email": {"type": "string", "description": "Recipient email address"},
+                        "subject": {"type": "string", "description": "Original email subject (will prepend Re: if missing)"},
+                        "body": {"type": "string", "description": "Reply content"},
+                        "in_reply_to": {"type": "string", "description": "Message-ID of the parent email"},
+                        "references": {"type": "string", "description": "Optional chain of Message-IDs"},
+                    },
+                    "required": ["to_email", "subject", "body", "in_reply_to"],
+                },
+                func=self._tool_gmail_reply,
+                risk_level=ActionRiskLevel.HIGH,
+            )
+        )
+
+        # 16. slack_send_message
+        self.register(
+            ToolDefinition(
+                name="slack_send_message",
+                description="Send a message to a Slack channel or thread.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "Message text"},
+                        "channel": {"type": "string", "description": "Channel ID/name (defaults to SLACK_DEFAULT_CHANNEL)"},
+                        "thread_ts": {"type": "string", "description": "Optional thread timestamp for threaded replies"},
+                    },
+                    "required": ["text"],
+                },
+                func=self._tool_slack_send_message,
+                risk_level=ActionRiskLevel.LOW,
+            )
+        )
+
+        # 17. slack_edit_message
+        self.register(
+            ToolDefinition(
+                name="slack_edit_message",
+                description="Edit an existing Slack message using its timestamp (ts).",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "timestamp": {"type": "string", "description": "The timestamp 'ts' of the message to edit"},
+                        "text": {"type": "string", "description": "New message content"},
+                        "channel": {"type": "string", "description": "Channel ID/name (defaults to SLACK_DEFAULT_CHANNEL)"},
+                    },
+                    "required": ["timestamp", "text"],
+                },
+                func=self._tool_slack_edit_message,
+                risk_level=ActionRiskLevel.LOW,
+            )
+        )
+
+        # 18. slack_delete_message
+        self.register(
+            ToolDefinition(
+                name="slack_delete_message",
+                description="Delete a message from a Slack channel.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "timestamp": {"type": "string", "description": "The timestamp 'ts' of the message to delete"},
+                        "channel": {"type": "string", "description": "Channel ID/name (defaults to SLACK_DEFAULT_CHANNEL)"},
+                    },
+                    "required": ["timestamp"],
+                },
+                func=self._tool_slack_delete_message,
+                risk_level=ActionRiskLevel.MEDIUM,
+            )
+        )
+
     # Tool Implementations
     def _tool_read_file(self, file_path: str = "", start_line: Optional[int] = None, end_line: Optional[int] = None) -> str:
         if not file_path:
@@ -373,6 +579,198 @@ class MCPToolRegistry:
         analysis = project_analyzer.analyze()
         lines = [f"{k}: {v}" for k, v in analysis.items()]
         return "\n".join(lines)
+
+    def _tool_gitlab_workflow(
+        self,
+        current_branch: str,
+        commit_message: str,
+        target_branch: str = "main",
+        create_mr: bool = True,
+        mr_title: Optional[str] = None,
+        mr_description: Optional[str] = None,
+        files: Optional[List[str]] = None,
+        project_id: Optional[str] = None,
+    ) -> str:
+        decision = hitl_manager.request_approval(
+            action_name=f"gitlab_workflow('{current_branch}' -> '{target_branch}')",
+            risk_level=ActionRiskLevel.HIGH,
+            details=f"Push branch '{current_branch}' to GitLab with commit: '{commit_message}' and create_mr={create_mr}",
+            payload={"branch": current_branch, "commit": commit_message, "create_mr": create_mr},
+        )
+        if not decision.approved:
+            return f"GitLab workflow cancelled by user: {decision.user_feedback}"
+
+        return gitlab_integration.gitlab_workflow(
+            current_branch=current_branch,
+            target_branch=target_branch,
+            commit_message=commit_message,
+            create_mr=create_mr,
+            mr_title=mr_title,
+            mr_description=mr_description,
+            files=files,
+            project_id=project_id,
+        )
+
+    def _tool_github_workflow(
+        self,
+        current_branch: str,
+        commit_message: str,
+        target_branch: str = "main",
+        create_pr: bool = True,
+        pr_title: Optional[str] = None,
+        pr_description: Optional[str] = None,
+        files: Optional[List[str]] = None,
+        repository: Optional[str] = None,
+    ) -> str:
+        decision = hitl_manager.request_approval(
+            action_name=f"github_workflow('{current_branch}' -> '{target_branch}')",
+            risk_level=ActionRiskLevel.HIGH,
+            details=f"Push branch '{current_branch}' to GitHub with commit: '{commit_message}' and create_pr={create_pr}",
+            payload={"branch": current_branch, "commit": commit_message, "create_pr": create_pr},
+        )
+        if not decision.approved:
+            return f"GitHub workflow cancelled by user: {decision.user_feedback}"
+
+        return github_integration.github_workflow(
+            current_branch=current_branch,
+            target_branch=target_branch,
+            commit_message=commit_message,
+            create_pr=create_pr,
+            pr_title=pr_title,
+            pr_description=pr_description,
+            files=files,
+            repository=repository,
+        )
+
+    def _tool_jira_update_status(
+        self,
+        issue_key: str,
+        status_name: str,
+        comment: Optional[str] = None,
+    ) -> str:
+        decision = hitl_manager.request_approval(
+            action_name=f"jira_update_status('{issue_key}', '{status_name}')",
+            risk_level=ActionRiskLevel.MEDIUM,
+            details=f"Transition Jira issue '{issue_key}' to '{status_name}'",
+            payload={"issue_key": issue_key, "status_name": status_name},
+        )
+        if not decision.approved:
+            return f"Jira status update cancelled by user: {decision.user_feedback}"
+
+        return jira_integration.update_status(
+            issue_key=issue_key,
+            status_name=status_name,
+            comment=comment,
+        )
+
+    def _tool_jira_add_comment(
+        self,
+        issue_key: str,
+        comment: str,
+    ) -> str:
+        return jira_integration.add_comment(
+            issue_key=issue_key,
+            comment=comment,
+        )
+
+    def _tool_jira_get_issue(
+        self,
+        issue_key: str,
+    ) -> str:
+        return jira_integration.get_issue(
+            issue_key=issue_key,
+        )
+
+    def _tool_gmail_send(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        cc: Optional[List[str]] = None,
+    ) -> str:
+        decision = hitl_manager.request_approval(
+            action_name=f"gmail_send('{to_email}', '{subject}')",
+            risk_level=ActionRiskLevel.HIGH,
+            details=f"Send email to '{to_email}' with subject: '{subject}'",
+            payload={"to": to_email, "subject": subject},
+        )
+        if not decision.approved:
+            return f"Email sending cancelled by user: {decision.user_feedback}"
+
+        return gmail_integration.send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            cc=cc,
+        )
+
+    def _tool_gmail_reply(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        in_reply_to: str,
+        references: Optional[str] = None,
+    ) -> str:
+        decision = hitl_manager.request_approval(
+            action_name=f"gmail_reply('{to_email}', '{subject}')",
+            risk_level=ActionRiskLevel.HIGH,
+            details=f"Reply to email '{to_email}' (In-Reply-To: {in_reply_to})",
+            payload={"to": to_email, "subject": subject, "in_reply_to": in_reply_to},
+        )
+        if not decision.approved:
+            return f"Email reply cancelled by user: {decision.user_feedback}"
+
+        return gmail_integration.reply_email(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            in_reply_to=in_reply_to,
+            references=references,
+        )
+
+    def _tool_slack_send_message(
+        self,
+        text: str,
+        channel: Optional[str] = None,
+        thread_ts: Optional[str] = None,
+    ) -> str:
+        return slack_integration.send_message(
+            text=text,
+            channel=channel,
+            thread_ts=thread_ts,
+        )
+
+    def _tool_slack_edit_message(
+        self,
+        timestamp: str,
+        text: str,
+        channel: Optional[str] = None,
+    ) -> str:
+        return slack_integration.edit_message(
+            timestamp=timestamp,
+            text=text,
+            channel=channel,
+        )
+
+    def _tool_slack_delete_message(
+        self,
+        timestamp: str,
+        channel: Optional[str] = None,
+    ) -> str:
+        decision = hitl_manager.request_approval(
+            action_name=f"slack_delete_message('{timestamp}')",
+            risk_level=ActionRiskLevel.MEDIUM,
+            details=f"Delete Slack message '{timestamp}' in channel '{channel or settings.SLACK_DEFAULT_CHANNEL}'",
+            payload={"timestamp": timestamp, "channel": channel},
+        )
+        if not decision.approved:
+            return f"Slack message deletion cancelled by user: {decision.user_feedback}"
+
+        return slack_integration.delete_message(
+            timestamp=timestamp,
+            channel=channel,
+        )
 
 
 # Singleton tool registry
