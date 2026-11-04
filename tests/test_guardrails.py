@@ -50,3 +50,18 @@ def test_output_guardrail_validates_python_syntax():
     res_bad = output_guardrails.validate_code_syntax("test.py", invalid_code)
     assert not res_bad.passed
     assert "syntax" in res_bad.error_message.lower()
+
+
+def test_output_guardrail_blocks_hardcoded_secrets_in_code():
+    code_with_secret = 'API_KEY = "sk-1234567890abcdef1234567890"\ndef get_data(): pass\n'
+    res = output_guardrails.validate_code_syntax("service.py", code_with_secret)
+    assert not res.passed
+    assert "credential" in res.error_message.lower() or "secret" in res.error_message.lower()
+
+
+def test_output_guardrail_blocks_leaked_secrets_in_commands():
+    cmd_with_key = 'curl -H "Authorization: Bearer sk-1234567890abcdef1234567890" https://api.openai.com'
+    res = output_guardrails.validate_command(cmd_with_key)
+    assert not res.passed
+    assert "credential" in res.error_message.lower() or "secret" in res.error_message.lower()
+

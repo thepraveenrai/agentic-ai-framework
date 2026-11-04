@@ -39,11 +39,22 @@ class OutputGuardrailEngine:
         r"(?i)wget.*\|\s*(bash|sh|powershell)",
     ]
 
+    # Secret and credential leakage patterns
+    SECRET_PATTERNS = [
+        (r"sk-[a-zA-Z0-9_-]{20,}", "OpenAI API Key"),
+        (r"sk-or-v1-[a-zA-Z0-9]{32,}", "OpenRouter API Key"),
+        (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
+        (r"ghp_[a-zA-Z0-9]{36}", "GitHub Personal Access Token"),
+        (r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----", "Private Cryptographic Key"),
+        (r"(?i)(password|secret|apikey|api_key|token)\s*[:=]\s*['\"][^\s'\"]{10,}['\"]", "Hardcoded Password or Token"),
+    ]
+
     def validate_command(self, command: str) -> OutputGuardrailResult:
-        """Verify that shell command is safe to execute."""
+        """Verify that shell command is safe to execute and does not leak credentials."""
         if not settings.GUARDRAILS_ENABLED or settings.ALLOW_DANGEROUS_COMMANDS:
             return OutputGuardrailResult(passed=True, violations=[])
 
+        # 1. Check for destructive commands
         for pattern in self.DANGEROUS_COMMAND_PATTERNS:
             if re.search(pattern, command):
                 violation = f"Potentially destructive system command blocked: '{command}'"
@@ -54,14 +65,36 @@ class OutputGuardrailEngine:
                     error_message=f"Dangerous command disallowed by security guardrail: pattern {pattern}",
                 )
 
+        # 2. Check for credential exposure in commands
+        for pattern, secret_type in self.SECRET_PATTERNS:
+            if re.search(pattern, command):
+                violation = f"Potentially exposed credential in shell command: {secret_type}"
+                logger.guardrail_alert("Output/SecretLeakage", violation, passed=False)
+                return OutputGuardrailResult(
+                    passed=False,
+                    violations=[violation],
+                    error_message=f"Command blocked: contains sensitive credential ({secret_type})",
+                )
+
         return OutputGuardrailResult(passed=True, violations=[])
 
     def validate_code_syntax(self, file_path: str, code_content: str) -> OutputGuardrailResult:
-        """Ensure proposed code or file edit has valid syntax."""
+        """Ensure proposed code has valid syntax and contains no exposed secrets."""
         if not settings.GUARDRAILS_ENABLED:
             return OutputGuardrailResult(passed=True, violations=[])
 
-        # Python syntax validation using built-in AST parser
+        # 1. Check for exposed secrets/credentials in code before saving
+        for pattern, secret_type in self.SECRET_PATTERNS:
+            if re.search(pattern, code_content):
+                violation = f"Exposed credential detected in {file_path}: {secret_type}"
+                logger.guardrail_alert("Output/SecretLeakage", violation, passed=False)
+                return OutputGuardrailResult(
+                    passed=False,
+                    violations=[violation],
+                    error_message=f"File update blocked: proposed code contains hardcoded secret/credential ({secret_type})",
+                )
+
+        # 2. Python syntax validation using built-in AST parser
         if file_path.endswith(".py"):
             try:
                 ast.parse(code_content, filename=file_path)
