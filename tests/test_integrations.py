@@ -4,13 +4,14 @@ import subprocess
 from unittest.mock import MagicMock, patch
 import pytest
 
-from agentic_framework.integrations import (
+from agentic_framework.mcp.integrations import (
     GitLabIntegration,
     GitHubIntegration,
     JiraIntegration,
     GmailIntegration,
     SlackIntegration,
 )
+from agentic_framework.core.hitl import HITLDecision
 from agentic_framework.mcp.tools import tool_registry
 from agentic_framework.mcp.server import MCPServer
 
@@ -181,6 +182,10 @@ def test_jira_get_issue_and_update_status():
         assert "Successfully updated Jira issue" in status_result
         assert "In Review" in status_result
 
+        # Also verify keyword call with status_name alias
+        status_result_kw = jira.update_status(issue_key="PAY-101", status_name="In Review")
+        assert "Successfully updated Jira issue" in status_result_kw
+
 
 def test_jira_add_comment():
     jira = JiraIntegration(
@@ -341,7 +346,7 @@ def test_mcp_server_lists_and_dispatches_enterprise_tools():
         assert tool_name in tool_names, f"Expected {tool_name} to be exposed via MCP tools/list"
 
     # 2. Verify tools/call dispatches correctly
-    with patch("agentic_framework.integrations.slack_tool.slack_integration.send_message") as mock_slack:
+    with patch("agentic_framework.mcp.integrations.slack_tool.slack_integration.send_message") as mock_slack:
         mock_slack.return_value = "Mocked Slack Message Success"
         call_req = {
             "id": 2,
@@ -353,3 +358,22 @@ def test_mcp_server_lists_and_dispatches_enterprise_tools():
         }
         resp_call = server.handle_request(call_req)
         assert resp_call["result"]["content"][0]["text"] == "Mocked Slack Message Success"
+
+    with patch("agentic_framework.mcp.tools.hitl_manager.request_approval", return_value=HITLDecision.APPROVE), \
+         patch("agentic_framework.mcp.integrations.jira_tool.jira_integration.update_status") as mock_jira:
+        mock_jira.return_value = "Mocked Jira Update Success"
+        call_req_jira = {
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "jira_update_status",
+                "arguments": {"issue_key": "PROJ-101", "status_name": "Done"},
+            },
+        }
+        resp_jira = server.handle_request(call_req_jira)
+        assert resp_jira["result"]["content"][0]["text"] == "Mocked Jira Update Success"
+        mock_jira.assert_called_once_with(
+            issue_key="PROJ-101",
+            target_status="Done",
+            comment=None,
+        )

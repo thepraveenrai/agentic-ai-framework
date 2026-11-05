@@ -84,13 +84,18 @@ class JiraIntegration:
     def update_status(
         self,
         issue_key: str,
-        target_status: str,
+        target_status: str = "",
         comment: Optional[str] = None,
+        status_name: Optional[str] = None,
     ) -> str:
         """Dynamically transition a Jira issue to a new status (e.g. 'In Review', 'Done')."""
         err = self._ensure_configured()
         if err:
             return err
+
+        resolved_status = (target_status or status_name or "").strip()
+        if not resolved_status:
+            return "❌ Missing required argument: target_status"
 
         key = issue_key.strip()
         transitions_url = f"{self.base_url}/rest/api/3/issue/{key}/transitions"
@@ -113,7 +118,7 @@ class JiraIntegration:
                 # 2. Match target status (case-insensitive substring or exact match)
                 matched_id = None
                 matched_name = None
-                target_clean = target_status.strip().lower()
+                target_clean = resolved_status.lower()
 
                 for t in transitions:
                     t_name = t.get("name", "")
@@ -126,7 +131,7 @@ class JiraIntegration:
                 if not matched_id:
                     available = [f"'{t.get('name')}'" for t in transitions]
                     return (
-                        f"⚠️ Status '{target_status}' is not a valid transition for '{key}'.\n"
+                        f"⚠️ Status '{resolved_status}' is not a valid transition for '{key}'.\n"
                         f"Available transitions right now: {', '.join(available)}"
                     )
 

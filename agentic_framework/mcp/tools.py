@@ -16,7 +16,7 @@ from agentic_framework.rag.retriever import retriever
 from agentic_framework.utils.diff_utils import diff_utils
 from agentic_framework.utils.project_analyzer import project_analyzer
 from agentic_framework.observability.logger import logger
-from agentic_framework.integrations import (
+from agentic_framework.mcp.integrations import (
     gitlab_integration,
     github_integration,
     jira_integration,
@@ -645,21 +645,23 @@ class MCPToolRegistry:
     def _tool_jira_update_status(
         self,
         issue_key: str,
-        status_name: str,
+        status_name: str = "",
         comment: Optional[str] = None,
+        target_status: Optional[str] = None,
     ) -> str:
+        resolved_status = target_status or status_name
         decision = hitl_manager.request_approval(
-            action_name=f"jira_update_status('{issue_key}', '{status_name}')",
+            action_name=f"jira_update_status('{issue_key}', '{resolved_status}')",
             risk_level=ActionRiskLevel.MEDIUM,
-            details=f"Transition Jira issue '{issue_key}' to '{status_name}'",
-            payload={"issue_key": issue_key, "status_name": status_name},
+            details=f"Transition Jira issue '{issue_key}' to '{resolved_status}'",
+            payload={"issue_key": issue_key, "status_name": resolved_status},
         )
         if not decision.approved:
             return f"Jira status update cancelled by user: {decision.user_feedback}"
 
         return jira_integration.update_status(
             issue_key=issue_key,
-            status_name=status_name,
+            target_status=resolved_status,
             comment=comment,
         )
 

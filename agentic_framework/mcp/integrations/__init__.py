@@ -8,11 +8,11 @@ Provides production-ready integrations with:
 - Slack (Sending messages, editing, deleting)
 """
 
-from agentic_framework.integrations.gitlab_tool import GitLabIntegration, gitlab_integration
-from agentic_framework.integrations.github_tool import GitHubIntegration, github_integration
-from agentic_framework.integrations.jira_tool import JiraIntegration, jira_integration
-from agentic_framework.integrations.gmail_tool import GmailIntegration, gmail_integration
-from agentic_framework.integrations.slack_tool import SlackIntegration, slack_integration
+from agentic_framework.mcp.integrations.gitlab_tool import GitLabIntegration, gitlab_integration
+from agentic_framework.mcp.integrations.github_tool import GitHubIntegration, github_integration
+from agentic_framework.mcp.integrations.jira_tool import JiraIntegration, jira_integration
+from agentic_framework.mcp.integrations.gmail_tool import GmailIntegration, gmail_integration
+from agentic_framework.mcp.integrations.slack_tool import SlackIntegration, slack_integration
 
 __all__ = [
     "GitLabIntegration",
